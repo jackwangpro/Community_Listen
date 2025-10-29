@@ -121,7 +121,7 @@ function formatTimestamp(timestamp) {
 
     // 新建浏览器上下文，配置指纹和代理
     const context = await browser.newContext({
-        proxy: { server: 'http://127.0.0.1:7890' }, // 代理服务器
+        // proxy: { server: 'http://127.0.0.1:7890' }, // 代理服务器
         viewport: { width: 1920, height: 1080 }, // 视口大小
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36', //用户代理
         locale: 'zh-CN', // 语言
