@@ -1,35 +1,45 @@
 name: Run Reddit Crawler
 
+# 可以手动触发，也可以定时触发
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '0 1 * * *'  # 每天 UTC 1 点运行
 
 jobs:
   crawl:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      # 1. 获取仓库代码
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
+      # 2. 设置 Node.js 环境
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '22'
 
-      - name: Install dependencies
+      # 3. 安装项目依赖
+      - name: Install npm dependencies
         run: npm install
 
+      # 4. 安装 Playwright 浏览器
       - name: Install Playwright browsers
         run: npx playwright install
 
-      - name: Install Linux libraries for Playwright
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libgtk-4-1 libgraphene-1.0-0 libwoff2-1 libvpx9 libevent-2.1-7 \
-            libopus0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
-            gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav \
-            libflite1 libavif16 libharfbuzz-icu0 libsecret-1-0 libhyphen0 \
-            libgles2-mesa libx264-160
+      # 5. 安装 Playwright Linux 系统依赖
+      - name: Install Playwright Linux dependencies
+        run: npx playwright install-deps
 
+      # 6. 测试网络（可选，确保可以访问 Reddit）
+      - name: Test Reddit connectivity
+        run: curl -I https://www.reddit.com/r/Supabase/new/ || echo "Cannot reach Reddit, check network"
+
+      # 7. 运行爬虫
       - name: Run Reddit crawler
-        run: node reddit.mjs
+        run: |
+          node reddit.mjs
+        env:
+          REDDIT_KEY: ${{ secrets.REDDIT_KEY }} # 如果你的脚本需要 API Key
