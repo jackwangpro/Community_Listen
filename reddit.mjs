@@ -134,21 +134,67 @@ function formatTimestamp(timestamp) {
 
         // 新建页面
         const page = await context.newPage();
-        // 打开网页
+        
+        // 添加反检测脚本
+        await page.addInitScript(() => {
+            // 覆盖 webdriver 属性
+            Object.defineProperty(navigator, 'webdriver', { get: () => false });
+            // 覆盖 chrome 对象
+            window.chrome = { runtime: {} };
+            // 添加真实浏览器插件
+            Object.defineProperty(navigator, 'plugins', {
+                get: () => [{ name: 'Chrome PDF Plugin' }, { name: 'Chrome PDF Viewer' }, { name: 'Native Client' }]
+            });
+        });
+        
+        // 打开网页（带重试）
         let navResponse = null;
-        try {
-            navResponse = await page.goto('https://www.reddit.com/r/Supabase/new/', { waitUntil: 'domcontentloaded', timeout: 60000 });
-        } catch (e) {
-            console.error('页面导航失败:', e.message);
-        }
-        // 获取页面标题
         let pageTitle = '';
-        try {
-            pageTitle = await page.title();
-        } catch (e) {
-            console.error('获取页面标题失败:', e.message);
+        const maxRetries = 3;
+        let retryCount = 0;
+        
+        while (retryCount < maxRetries) {
+            try {
+                console.log(`尝试访问页面... (${retryCount + 1}/${maxRetries})`);
+                navResponse = await page.goto('https://www.reddit.com/r/Supabase/new/', {
+                    waitUntil: 'networkidle',
+                    timeout: 60000
+                });
+                
+                // 等待更长时间让页面完全加载
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                
+                try {
+                    pageTitle = await page.title();
+                } catch (e) {
+                    console.error('获取页面标题失败:', e.message);
+                }
+                
+                const status = navResponse ? navResponse.status() : null;
+                console.log(`页面状态码: ${status}, 页面标题: ${pageTitle || '(无)'}`);
+                
+                // 即使403也尝试继续，因为可能部分内容已加载
+                if (status === 200 || status === 403) {
+                    break;
+                }
+                
+                retryCount++;
+                if (retryCount < maxRetries) {
+                    const waitTime = (retryCount + 1) * 5000;
+                    console.log(`等待 ${waitTime}ms 后重试...`);
+                    await new Promise(resolve => setTimeout(resolve, waitTime));
+                }
+            } catch (e) {
+                retryCount++;
+                console.error(`页面导航失败 (${retryCount}/${maxRetries}):`, e.message);
+                if (retryCount < maxRetries) {
+                    const waitTime = (retryCount + 1) * 5000;
+                    await new Promise(resolve => setTimeout(resolve, waitTime));
+                }
+            }
         }
-        console.log('页面标题:', pageTitle);
+
+        console.log('页面标题:', pageTitle || '(未获取到)');
 
         // 可用性监测：检测状态码与人机验证
         const status = navResponse ? navResponse.status() : null;
@@ -172,13 +218,27 @@ function formatTimestamp(timestamp) {
             console.warn('读取页面源码失败:', e.message);
         }
 
-        if (!ok || isHumanCheck) {
-            console.error('页面不可用或触发人机验证，终止提取。');
+        // 即使403也尝试提取（可能部分内容已加载）
+        if (!ok && status !== 403) {
+            console.error('页面不可用，终止提取。');
             return;
         }
+        
+        if (isHumanCheck) {
+            console.warn('⚠️  检测到人机验证，但仍将尝试提取数据...');
+        }
 
-        // 等待页面加载
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        // 等待页面加载（更长时间）
+        console.log('等待页面完全加载...');
+        await new Promise(resolve => setTimeout(resolve, 8000));
+        
+        // 模拟滚动以触发懒加载
+        try {
+            await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+            await new Promise(resolve => setTimeout(resolve, 3000));
+        } catch (e) {
+            console.warn('滚动失败:', e.message);
+        }
 
         // 提取帖子数据
         console.log('\n开始提取帖子数据...\n');
