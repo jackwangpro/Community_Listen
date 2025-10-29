@@ -1,10 +1,7 @@
 name: Run Reddit Crawler
 
 on:
-  schedule:
-    # 每天凌晨 1 点运行
-    - cron: '0 1 * * *'
-  workflow_dispatch: # 手动触发
+  workflow_dispatch:
 
 jobs:
   crawl:
@@ -21,6 +18,9 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+
+      - name: Install Playwright browsers
+        run: npx playwright install
 
       - name: Run Reddit crawler
         run: node reddit.mjs
