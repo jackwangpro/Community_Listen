@@ -123,7 +123,7 @@ function formatTimestamp(timestamp) {
 
         // 新建浏览器上下文，配置指纹和代理
         const context = await browser.newContext({
-            // proxy: { server: 'http://127.0.0.1:7890' }, // 代理服务器
+            proxy: { server: 'http://127.0.0.1:7890' }, // 代理服务器
             viewport: { width: 1920, height: 1080 }, // 视口大小
             userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36', //用户代理
             locale: 'zh-CN', // 语言
@@ -147,53 +147,23 @@ function formatTimestamp(timestamp) {
             });
         });
         
-        // 打开网页（带重试）
+        // 打开网页（单次尝试，失败即退出）
         let navResponse = null;
         let pageTitle = '';
-        const maxRetries = 3;
-        let retryCount = 0;
-        
-        while (retryCount < maxRetries) {
+        try {
+            navResponse = await page.goto('https://www.reddit.com/r/Supabase/new/', {
+                waitUntil: 'domcontentloaded',
+                timeout: 60000
+            });
             try {
-                console.log(`尝试访问页面... (${retryCount + 1}/${maxRetries})`);
-                navResponse = await page.goto('https://www.reddit.com/r/Supabase/new/', {
-                    waitUntil: 'networkidle',
-                    timeout: 60000
-                });
-                
-                // 等待更长时间让页面完全加载
-                await new Promise(resolve => setTimeout(resolve, 5000));
-                
-                try {
-                    pageTitle = await page.title();
-                } catch (e) {
-                    console.error('获取页面标题失败:', e.message);
-                }
-                
-                const status = navResponse ? navResponse.status() : null;
-                console.log(`页面状态码: ${status}, 页面标题: ${pageTitle || '(无)'}`);
-                
-                // 即使403也尝试继续，因为可能部分内容已加载
-                if (status === 200 || status === 403) {
-                    break;
-                }
-                
-                retryCount++;
-                if (retryCount < maxRetries) {
-                    const waitTime = (retryCount + 1) * 5000;
-                    console.log(`等待 ${waitTime}ms 后重试...`);
-                    await new Promise(resolve => setTimeout(resolve, waitTime));
-                }
+                pageTitle = await page.title();
             } catch (e) {
-                retryCount++;
-                console.error(`页面导航失败 (${retryCount}/${maxRetries}):`, e.message);
-                if (retryCount < maxRetries) {
-                    const waitTime = (retryCount + 1) * 5000;
-                    await new Promise(resolve => setTimeout(resolve, waitTime));
-                }
+                console.warn('获取页面标题失败:', e.message);
             }
+        } catch (e) {
+            console.error('访问页面失败，已退出：', e.message);
+            return;
         }
-
         console.log('页面标题:', pageTitle || '(未获取到)');
 
         // 可用性监测：检测状态码与人机验证
