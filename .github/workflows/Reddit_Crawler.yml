@@ -40,6 +40,6 @@ jobs:
       # 7. 运行爬虫
       - name: Run Reddit crawler
         run: |
-          node reddit.mjs
+          node 3.reddit.mjs
         env:
           REDDIT_KEY: ${{ secrets.REDDIT_KEY }} # 如果你的脚本需要 API Key
