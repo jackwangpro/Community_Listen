@@ -2,9 +2,10 @@ name: Run Reddit Crawler
 
 # 可以手动触发，也可以定时触发
 on:
-  workflow_dispatch:
   schedule:
-    - cron: '0 1 * * *'  # 每天 UTC 1 点运行
+    # 每4小时执行一次（UTC时间 0点、4点、8点、12点、16点、20点）
+    - cron: "0 */4 * * *"
+  workflow_dispatch:  # 允许手动运行
 
 jobs:
   crawl:
