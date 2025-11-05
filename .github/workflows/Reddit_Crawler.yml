@@ -1,46 +1,46 @@
+# GitHub Actions Workflow: Run Reddit Crawler
 name: Run Reddit Crawler
 
-# 可以手动触发，也可以定时触发
 on:
   schedule:
-    # 每4小时执行一次（UTC时间 0点、4点、8点、12点、16点、20点）
+    # 每 4 小时执行一次（UTC：0/4/8/12/16/20）
     - cron: "0 */4 * * *"
-  workflow_dispatch:  # 允许手动运行
+  workflow_dispatch:  # 允许手动触发
 
 jobs:
   crawl:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # 使用 GitHub 提供的 Ubuntu 虚拟机
 
     steps:
-      # 1. 获取仓库代码
+      # 1. 拉取仓库代码，否则无法访问项目文件
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. 设置 Node.js 环境
+      # 2. 设置 Node.js 运行环境（使用 Node 22）
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '22'
 
-      # 3. 安装项目依赖
+      # 3. 安装 npm 依赖
       - name: Install npm dependencies
         run: npm install
 
-      # 4. 安装 Playwright 浏览器
+      # 4. 下载 Playwright 浏览器二进制文件
       - name: Install Playwright browsers
         run: npx playwright install
 
-      # 5. 安装 Playwright Linux 系统依赖
+      # 5. 安装 Playwright 在 Linux 下运行所需的系统依赖
       - name: Install Playwright Linux dependencies
         run: npx playwright install-deps
 
-      # 6. 测试网络（可选，确保可以访问 Reddit）
+      # 6. 测试 Reddit 是否可访问（注意 Reddit 可能对无 UA 的请求返回 403）
       - name: Test Reddit connectivity
-        run: curl -I https://www.reddit.com/r/Supabase/new/ || echo "Cannot reach Reddit, check network"
+        run: curl -I -A "Mozilla/5.0" https://www.reddit.com/r/Supabase/new/ || echo "Cannot reach Reddit, check network"
 
-      # 7. 运行爬虫
+      # 7. 运行爬虫脚本（Playwright + Node）
       - name: Run Reddit crawler
         run: |
           node 3.reddit.mjs
         env:
-          REDDIT_KEY: ${{ secrets.REDDIT_KEY }} # 如果你的脚本需要 API Key
+          REDDIT_KEY: ${{ secrets.REDDIT_KEY }}  # 如果你的脚本需要 Key，可在仓库设置中添加
