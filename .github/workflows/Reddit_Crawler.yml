@@ -41,6 +41,6 @@ jobs:
       # 7. 运行爬虫脚本（Playwright + Node）
       - name: Run Reddit crawler
         run: |
-          node 3.reddit.mjs
+          node 3.Load_env_reddit.mjs
         env:
           REDDIT_KEY: ${{ secrets.REDDIT_KEY }}  # 如果你的脚本需要 Key，可在仓库设置中添加
